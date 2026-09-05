@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Refresher Game - Welcome</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: auto; /* Enable scrolling */
+      scrollbar-width: none; /* Hide scrollbar for Firefox */
+      -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+      background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 50%, #f1f5f9 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    html::-webkit-scrollbar, body::-webkit-scrollbar, div::-webkit-scrollbar {
+      display: none;
+    }
+
+    #root {
+      min-width: 100vw;
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body class="text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function WelcomeApp() {
+      const [isInfoOpen, setIsInfoOpen] = useState(false);
+
+      return (
+        <div className="relative w-full min-h-screen flex flex-col items-center justify-center p-6">
+          
+          {/* Information "i" Button in Top Right Corner */}
+          <div className="absolute top-6 right-6 z-40">
+            <button 
+              onClick={() => setIsInfoOpen(true)}
+              className="w-12 h-12 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-lg flex items-center justify-center text-indigo-600 font-bold text-2xl hover:bg-white transition-colors"
+              aria-label="Information"
+            >
+              i
+            </button>
+          </div>
+
+          {/* Main Hero Card */}
+          <div className="max-w-md w-full bg-white/80 backdrop-blur-md p-8 rounded-3xl border border-slate-200/80 shadow-2xl text-center flex flex-col items-center">
+            <h1 className="text-4xl font-black text-indigo-600 mb-2 tracking-wide drop-shadow-sm">
+              Refresher Game
+            </h1>
+            <p className="text-slate-600 text-lg mb-8 font-medium">
+              Challenge your focus with quick physical puzzle rounds!
+            </p>
+
+            <a 
+              href="game.html"
+              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xl rounded-2xl shadow-lg hover:shadow-xl transition-shadow text-center"
+            >
+              Start Game
+            </a>
+          </div>
+
+          {/* Overlay Modal */}
+          {isInfoOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 relative text-left">
+                
+                {/* Close Button at the Top Right of the Modal */}
+                <button 
+                  onClick={() => setIsInfoOpen(false)}
+                  className="absolute top-5 right-5 w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-full flex items-center justify-center transition-colors"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+
+                <h2 className="text-2xl font-black text-indigo-600 mb-4 tracking-wide border-b pb-2">
+                  Game Overview & Rules
+                </h2>
+
+                <div className="space-y-4 text-slate-700 text-sm leading-relaxed">
+                  <p>
+                    <strong>Refresher Game</strong> is a multi-level puzzle experience designed to test spatial memory, dexterity, and logic across four distinct stages. A unified timer tracks your total time spent across all levels.
+                  </p>
+
+                  <h3 className="font-bold text-slate-900 text-base mt-4">General Principles & Physics</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><strong>Physics System:</strong> Utilizes 2D collision detection and realistic gravity across interactive elements on the ground and table surfaces.</li>
+                    <li><strong>Unique Palette Assignment:</strong> Color selection is generated dynamically without duplicates in a single session to ensure a fresh puzzle configuration upon each playthrough.</li>
+                  </ul>
+
+                  <h3 className="font-bold text-slate-900 text-base mt-4">Level Breakdown</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <strong className="text-indigo-600">Level 1: 3-Can Sequence Alignment</strong>
+                      <p className="text-xs text-slate-600">Observe a hidden target sequence behind the box. Drag 3 uniquely colored cans from the floor onto the table to match the original hidden sequence.</p>
+                    </div>
+
+                    <div>
+                      <strong className="text-indigo-600">Level 2: Precision Water Target Throw</strong>
+                      <p className="text-xs text-slate-600">Aim and launch a slightly drifting ball into a water-filled container to trigger a dynamic splash effect and advance.</p>
+                    </div>
+
+                    <div>
+                      <strong className="text-indigo-600">Level 3: Expanded 5-Can Sequence Alignment</strong>
+                      <p className="text-xs text-slate-600">Follows Level 1 rules with increased difficulty, requiring 5 uniquely colored cans arranged in correct order without duplicating colors from previous levels.</p>
+                    </div>
+
+                    <div>
+                      <strong className="text-indigo-600">Level 4: Pyramid Cup Stacking</strong>
+                      <p className="text-xs text-slate-600">Arrange 6 mixed cups into a structured 3-tier pyramid (1 Top Cup, 2 Middle Cups, 3 Base Cups) categorized by distinct uniform color layers.</p>
+                    </div>
+                  </div>
+
+                  <p className="pt-2 text-xs text-slate-500 italic border-t">
+                    Complete all 4 consecutive stages to view your total elapsed completion time.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<WelcomeApp />);
+  </script>
+</body>
+</html>
