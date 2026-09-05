@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Refresher Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 50%, #f1f5f9 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #root {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="text-slate-800">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const MASTER_COLOR_PALETTE = [
+      '#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#F7FFF7',
+      '#FF9F1C', '#2EC4B6', '#E71D36', '#702632',
+      '#9B5DE5', '#F15BB5', '#00BBF9', '#00F5D4', '#8AC926',
+      '#FFCA3A', '#1982C4', '#6A4C93', '#D81159', '#8F2D56'
+    ];
+
+    const usedColorsSet = new Set();
+
+    function getUniqueRandomColors(count) {
+      const available = MASTER_COLOR_PALETTE.filter(c => !usedColorsSet.has(c));
+      const pool = available.length >= count ? available : MASTER_COLOR_PALETTE;
+      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, count);
+      selected.forEach(c => usedColorsSet.add(c));
+      return selected;
+    }
+
+    function App() {
+      const [level, setLevel] = useState(1);
+      const [secondsSpent, setSecondsSpent] = useState(0);
+      const [isGameOver, setIsGameOver] = useState(false);
+      const [level1Colors, setLevel1Colors] = useState([]);
+
+      useEffect(() => {
+        if (isGameOver) return;
+        const timer = setInterval(() => {
+          setSecondsSpent(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(timer);
+      }, [isGameOver]);
+
+      const formatTime = (totalSecs) => {
+        const mins = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+        const secs = (totalSecs % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+      };
+
+      const handleLevelComplete = (completedLevel) => {
+        if (completedLevel === 1) {
+          setLevel(2);
+        } else if (completedLevel === 2) {
+          setLevel(3);
+        } else if (completedLevel === 3) {
+          setLevel(4);
+        } else if (completedLevel === 4) {
+          setIsGameOver(true);
+        }
+      };
+
+      return (
+        <div id="game-container" className="relative w-full h-full bg-slate-50">
+          <div className="absolute top-4 left-4 right-4 z-40 flex justify-between items-center pointer-events-none">
+            <div className="bg-white/80 backdrop-blur-md px-6 py-2.5 rounded-2xl border border-slate-200/80 shadow-lg pointer-events-auto">
+              <span className="font-extrabold text-xl text-indigo-600 tracking-wide">
+                {isGameOver ? 'Completed!' : `Level ${level} of 4`}
+              </span>
+            </div>
+            <div className="bg-white/80 backdrop-blur-md px-6 py-2.5 rounded-2xl border border-slate-200/80 shadow-lg pointer-events-auto">
+              <span className="font-mono text-lg text-teal-700 font-bold">
+                Time Spent: {formatTime(secondsSpent)}
+              </span>
+            </div>
+          </div>
+
+          {!isGameOver && (
+            <PhaserWrapper 
+              level={level} 
+              onComplete={() => handleLevelComplete(level)} 
+              level1Colors={level1Colors}
+              setLevel1Colors={setLevel1Colors}
+            />
+          )}
+
+          {isGameOver && (
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-lg flex flex-col items-center justify-center p-8 text-center animate-fade-in z-50">
+              <h2 className="text-6xl font-black text-amber-500 mb-4 tracking-wider drop-shadow-md">GAME ENDS</h2>
+              <p className="text-2xl text-slate-700 mb-2 font-medium">
+                Time Spent: <span className="font-mono font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-lg border border-teal-200">{formatTime(secondsSpent)}</span>
+              </p>
+              <p className="text-3xl font-bold text-indigo-600 mt-6 animate-bounce">
+                Congratulations! 🎉
+              </p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="mt-8 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105"
+              >
+                Play Again
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function PhaserWrapper({ level, onComplete, level1Colors, setLevel1Colors }) {
+      const gameRef = useRef(null);
+
+      useEffect(() => {
+        const config = {
+          type: Phaser.AUTO,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          parent: 'game-container',
+          scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+          },
+          physics: {
+            default: 'arcade',
+            arcade: {
+              gravity: { y: 800 },
+              debug: false
+            }
+          },
+          scene: []
+        };
+
+        const game = new Phaser.Game(config);
+        gameRef.current = game;
+
+        if (level === 1) {
+          const colors = getUniqueRandomColors(3);
+          setLevel1Colors(colors);
+          game.scene.add('Level1', new CanArrangementScene(1, colors, onComplete), true);
+        } else if (level === 2) {
+          game.scene.add('Level2', new WaterThrowScene(onComplete), true);
+        } else if (level === 3) {
+          const colors = getUniqueRandomColors(5);
+          game.scene.add('Level3', new CanArrangementScene(3, colors, onComplete), true);
+        } else if (level === 4) {
+          game.scene.add('Level4', new CupPyramidScene(onComplete), true);
+        }
+
+        return () => {
+          game.destroy(true);
+        };
+      }, [level]);
+
+      return null;
+    }
+
+    function drawRealisticCan(scene, colorHex) {
+      const graphics = scene.add.graphics();
+      const colorNum = parseInt(colorHex.replace('#', '0x'));
+      graphics.fillStyle(colorNum, 1);
+      graphics.fillRoundedRect(-25, -35, 50, 70, 8);
+      graphics.fillStyle(0xffffff, 0.25);
+      graphics.fillRoundedRect(-20, -32, 10, 64, 4);
+      graphics.fillStyle(0xd1d5db, 1);
+      graphics.fillEllipse(0, -35, 46, 8);
+      graphics.fillStyle(0x9ca3af, 1);
+      graphics.fillEllipse(0, 35, 46, 8);
+      graphics.lineStyle(2, 0x4b5563, 0.4);
+      graphics.strokeRoundedRect(-25, -35, 50, 70, 8);
+      return graphics;
+    }
+
+    function drawRealisticCup(scene, colorNum, width = 50, height = 60) {
+      const graphics = scene.add.graphics();
+      const halfW = width / 2;
+      const halfH = height / 2;
+
+      graphics.fillStyle(colorNum, 1);
+      graphics.beginPath();
+      graphics.moveTo(-halfW, -halfH);
+      graphics.lineTo(halfW, -halfH);
+      graphics.lineTo(halfW * 0.75, halfH);
+      graphics.lineTo(-halfW * 0.75, halfH);
+      graphics.closePath();
+      graphics.fill();
+
+      graphics.fillStyle(0xffffff, 0.3);
+      graphics.beginPath();
+      graphics.moveTo(-halfW * 0.8, -halfH + 4);
+      graphics.lineTo(-halfW * 0.5, -halfH + 4);
+      graphics.lineTo(-halfW * 0.4, halfH - 4);
+      graphics.lineTo(-halfW * 0.65, halfH - 4);
+      graphics.closePath();
+      graphics.fill();
+
+      graphics.lineStyle(2, 0x374151, 0.5);
+      graphics.beginPath();
+      graphics.moveTo(-halfW, -halfH);
+      graphics.lineTo(halfW, -halfH);
+      graphics.lineTo(halfW * 0.75, halfH);
+      graphics.lineTo(-halfW * 0.75, halfH);
+      graphics.closePath();
+      graphics.stroke();
+
+      graphics.fillStyle(0xffffff, 0.5);
+      graphics.fillEllipse(0, -halfH, width, 8);
+      return graphics;
+    }
+
+    class CanArrangementScene extends Phaser.Scene {
+      constructor(levelNum, colors, onComplete) {
+        super({ key: `Level${levelNum}` });
+        this.levelNum = levelNum;
+        this.colors = colors;
+        this.onComplete = onComplete;
+        this.count = colors.length;
+      }
+
+      create() {
+        const { width, height } = this.scale;
+
+        this.add.rectangle(width / 2, height / 2, width, height, 0xf8fafc);
+        
+        const wallPattern = this.add.graphics();
+        wallPattern.lineStyle(1, 0xe2e8f0, 0.5);
+        for (let i = 0; i < width; i += 40) {
+          wallPattern.lineBetween(i, 0, i, height - 120);
+        }
+        for (let j = 0; j < height - 120; j += 40) {
+          wallPattern.lineBetween(0, j, width, j);
+        }
+
+        const floor = this.add.rectangle(width / 2, height - 20, width, 40, 0xe2e8f0);
+        this.physics.add.existing(floor, true);
+
+        const boxWidth = this.count * 85 + 60;
+        const boxHeight = 110;
+        const boxX = width / 2;
+        const boxY = height - 160;
+
+        const tableTop = this.add.rectangle(boxX, boxY - 50, boxWidth + 20, 16, 0xb45309);
+        this.physics.add.existing(tableTop, true);
+
+        const box = this.add.rectangle(boxX, boxY, boxWidth, boxHeight, 0xd97706);
+        this.physics.add.existing(box, true);
+        box.setDepth(10);
+        tableTop.setDepth(11);
+
+        this.add.text(boxX, boxY, "TABLE", { font: "bold 16px sans-serif", fill: "#78350f" }).setOrigin(0.5).setDepth(12);
+
+        this.actualOrder = [...this.colors];
+        const startX = boxX - ((this.count - 1) * 75) / 2;
+
+        this.actualOrder.forEach((colorHex, idx) => {
+          const x = startX + idx * 75;
+          const targetCan = drawRealisticCan(this, colorHex);
+          targetCan.setPosition(x, boxY - 25);
+          targetCan.setDepth(0);
+        });
+
+        let shuffled = [...this.colors];
+        while (shuffled.join('') === this.actualOrder.join('') && shuffled.length > 1) {
+          shuffled.sort(() => Math.random() - 0.5);
+        }
+
+        this.cans = [];
+        const floorStartX = width / 2 - ((this.count - 1) * 90) / 2;
+
+        shuffled.forEach((colorHex, idx) => {
+          const x = floorStartX + idx * 90;
+          const y = height - 60;
+
+          const container = this.add.container(x, y);
+          const graphic = drawRealisticCan(this, colorHex);
+          container.add(graphic);
+          container.setSize(50, 70);
+          container.colorHex = colorHex;
+          container.setDepth(20);
+
+          this.physics.world.enable(container);
+          container.body.setCollideWorldBounds(true);
+          container.body.setBounce(0.2, 0.2);
+          container.body.setFriction(0.8, 0.8);
+          
+          this.physics.add.collider(container, floor);
+          this.physics.add.collider(container, tableTop);
+
+          container.setInteractive({ draggable: true });
+          this.cans.push(container);
+        });
+
+        for (let i = 0; i < this.cans.length; i++) {
+          for (let j = i + 1; j < this.cans.length; j++) {
+            this.physics.add.collider(this.cans[i], this.cans[j]);
+          }
+        }
+
+        this.input.on('dragstart', (pointer, gameObject) => {
+          gameObject.body.setAllowGravity(false);
+          gameObject.body.setVelocity(0, 0);
+          gameObject.setDepth(30);
+        });
+
+        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+          gameObject.x = dragX;
+          gameObject.y = dragY;
+        });
+
+        this.input.on('dragend', (pointer, gameObject) => {
+          gameObject.body.setAllowGravity(true);
+          gameObject.setDepth(20);
+          this.time.delayedCall(300, () => this.checkArrangement());
+        });
+
+        this.add.text(width / 2, 80, `Level ${this.levelNum}: Drag Cans from Floor onto the Table in Correct Order!`, {
+          font: "bold 20px sans-serif",
+          fill: "#1e293b"
+        }).setOrigin(0.5);
+      }
+
+      checkArrangement() {
+        const tableY = this.scale.height - 210;
+        const placedCans = this.cans
+          .filter(c => c.y < tableY + 30 && c.y > tableY - 100)
+          .sort((a, b) => a.x - b.x);
+
+        if (this.feedbackText) this.feedbackText.destroy();
+
+        if (placedCans.length === this.count) {
+          const currentOrder = placedCans.map(c => c.colorHex);
+          const isCorrect = currentOrder.every((col, idx) => col === this.actualOrder[idx]);
+
+          if (isCorrect) {
+            this.feedbackText = this.add.text(this.scale.width / 2, 130, "You Got It!", { font: "bold 32px sans-serif", fill: "#16a34a" }).setOrigin(0.5);
+            this.time.delayedCall(1200, () => this.onComplete());
+          } else {
+            let correctCount = 0;
+            currentOrder.forEach((col, idx) => {
+              if (col === this.actualOrder[idx]) correctCount++;
+            });
+            this.feedbackText = this.add.text(this.scale.width / 2, 130, `${correctCount} correct`, { font: "bold 26px sans-serif", fill: "#dc2626" }).setOrigin(0.5);
+          }
+        } else {
+          this.feedbackText = this.add.text(this.scale.width / 2, 130, `${placedCans.length} placed on table`, { font: "bold 22px sans-serif", fill: "#475569" }).setOrigin(0.5);
+        }
+      }
+    }
+
+    class WaterThrowScene extends Phaser.Scene {
+      constructor(onComplete) {
+        super({ key: 'Level2' });
+        this.onComplete = onComplete;
+      }
+
+      create() {
+        const { width, height } = this.scale;
+
+        this.add.rectangle(width / 2, height / 2, width, height, 0xf0f9ff);
+
+        const table = this.add.rectangle(width * 0.75, height * 0.65, 180, 20, 0x0284c7);
+        this.physics.add.existing(table, true);
+        this.add.rectangle(width * 0.75, height * 0.65 + 100, 16, 180, 0x0369a1);
+
+        this.cupX = width * 0.75;
+        this.cupY = height * 0.65 - 50;
+        
+        const cupGraphic = drawRealisticCup(this, 0x38bdf8, 60, 80);
+        cupGraphic.setPosition(this.cupX, this.cupY);
+
+        const waterGraphic = this.add.graphics();
+        waterGraphic.fillStyle(0x0284c7, 0.8);
+        waterGraphic.fillRoundedRect(this.cupX - 22, this.cupY - 10, 44, 45, 4);
+
+        this.ball = this.add.circle(150, height * 0.75, 18, 0xeab308);
+        this.add.circle(150 - 4, height * 0.75 - 4, 5, 0xffffff, 0.6);
+
+        this.physics.add.existing(this.ball);
+        this.ball.body.setCollideWorldBounds(true);
+        this.ball.body.setBounce(0.7);
+        this.ball.body.setAllowGravity(false);
+
+        this.originX = 250;
+        this.originY = height * 0.75;
+        this.isDragging = false;
+        this.isThrown = false;
+
+        this.ball.setInteractive({ draggable: true });
+        this.trajectoryGraphics = this.add.graphics();
+
+        this.input.on('dragstart', (pointer, gameObject) => {
+          if (gameObject === this.ball && !this.isThrown) {
+            this.isDragging = true;
+          }
+        });
+
+        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+          if (gameObject === this.ball && !this.isThrown) {
+            const pullVector = new Phaser.Math.Vector2(this.originX - dragX, this.originY - dragY);
+            const maxPull = 150;
+            if (pullVector.length() > maxPull) {
+              pullVector.scale(maxPull / pullVector.length());
+            }
+            this.ball.x = this.originX - pullVector.x;
+            this.ball.y = this.originY - pullVector.y;
+
+            this.trajectoryGraphics.clear();
+            this.trajectoryGraphics.fillStyle(0x0284c7, 0.7);
+
+            const launchVx = pullVector.x * 8.5;
+            const launchVy = pullVector.y * 8.5;
+
+            let simX = this.ball.x;
+            let simY = this.ball.y;
+            let vx = launchVx;
+            let vy = launchVy;
+            const dt = 0.016;
+
+            for (let i = 0; i < 35; i++) {
+              simX += vx * dt;
+              simY += vy * dt;
+              vy += 800 * dt;
+              if (i % 2 === 0) {
+                this.trajectoryGraphics.fillCircle(simX, simY, 3);
+              }
+            }
+          }
+        });
+
+        this.input.on('dragend', (pointer, gameObject) => {
+          if (gameObject === this.ball && !this.isThrown) {
+            this.isDragging = false;
+            this.isThrown = true;
+            this.trajectoryGraphics.clear();
+
+            const pullVector = new Phaser.Math.Vector2(this.originX - this.ball.x, this.originY - this.ball.y);
+            this.ball.body.setAllowGravity(true);
+            this.ball.body.setVelocity(
+              pullVector.x * 8.5,
+              pullVector.y * 8.5
+            );
+          }
+        });
+
+        this.add.text(width / 2, 80, "Level 2: Aim & Click to throw the drifting ball into the water cup!", {
+          font: "bold 20px sans-serif",
+          fill: "#0369a1"
+        }).setOrigin(0.5);
+      }
+
+      update() {
+        if (this.isThrown && !this.hasSplashed) {
+          const dist = Phaser.Math.Distance.Between(this.ball.x, this.ball.y, this.cupX, this.cupY);
+          if (dist < 55) {
+            this.hasSplashed = true;
+            this.createWaterSplash(this.cupX, this.cupY);
+            this.add.text(this.scale.width / 2, 140, "SPLASH! DIRECT HIT!", { font: "bold 32px sans-serif", fill: "#0284c7" }).setOrigin(0.5);
+            this.time.delayedCall(1200, () => this.onComplete());
+          } else if (this.ball.body.blocked.down || this.ball.x > this.scale.width || this.ball.y > this.scale.height - 20) {
+            this.time.delayedCall(600, () => {
+              this.ball.x = 150;
+              this.ball.y = this.scale.height * 0.75;
+              this.ball.body.setVelocity(0, 0);
+              this.ball.body.setAllowGravity(false);
+              this.isThrown = false;
+            });
+          }
+        }
+      }
+
+      createWaterSplash(x, y) {
+        for (let i = 0; i < 35; i++) {
+          const particle = this.add.circle(x, y - 20, Phaser.Math.Between(3, 8), 0x38bdf8);
+          this.physics.add.existing(particle);
+          particle.body.setVelocity(
+            Phaser.Math.Between(-250, 250),
+            Phaser.Math.Between(-450, -150)
+          );
+          
+          this.tweens.add({
+            targets: particle,
+            alpha: 0,
+            duration: 700,
+            onComplete: () => particle.destroy()
+          });
+        }
+      }
+    }
+
+    class CupPyramidScene extends Phaser.Scene {
+      constructor(onComplete) {
+        super({ key: 'Level4' });
+        this.onComplete = onComplete;
+      }
+
+      create() {
+        const { width, height } = this.scale;
+        this.add.rectangle(width / 2, height / 2, width, height, 0xfffbe1);
+
+        const tableY = height * 0.68;
+        const table = this.add.rectangle(width / 2, tableY, 500, 20, 0x78350f);
+        this.physics.add.existing(table, true);
+        this.add.rectangle(width / 2 - 200, tableY + 80, 20, 140, 0x451a03);
+        this.add.rectangle(width / 2 + 200, tableY + 80, 20, 140, 0x451a03);
+
+        const colors = {
+          Lime: 0x84cc16,
+          Saffron: 0xf97316,
+          White: 0xfffff0
+        };
+
+        const cupW = 54;
+        const cupH = 64;
+
+        const initialCupsData = [
+          { type: 'White', color: colors.White },
+          { type: 'Saffron', color: colors.Saffron },
+          { type: 'Lime', color: colors.Lime },
+          { type: 'Lime', color: colors.Lime },
+          { type: 'Saffron', color: colors.Saffron },
+          { type: 'Lime', color: colors.Lime }
+        ].sort(() => Math.random() - 0.5);
+
+        const baseSlotsY = tableY - 10;
+        this.slots = [
+          { x: width / 2, y: baseSlotsY - (cupH * 2) - 10, expected: 'White' },
+          { x: width / 2 - (cupW / 2), y: baseSlotsY - cupH - 5, expected: 'Saffron' },
+          { x: width / 2 + (cupW / 2), y: baseSlotsY - cupH - 5, expected: 'Saffron' },
+          { x: width / 2 - cupW, y: baseSlotsY, expected: 'Lime' },
+          { x: width / 2, y: baseSlotsY, expected: 'Lime' },
+          { x: width / 2 + cupW, y: baseSlotsY, expected: 'Lime' }
+        ];
+
+        this.slots.forEach(s => {
+          this.add.rectangle(s.x, s.y - (cupH / 2), cupW, cupH).setStrokeStyle(2, 0xd97706, 0.3);
+        });
+
+        this.cups = [];
+        const floor = this.add.rectangle(width / 2, height - 10, width, 20, 0xe2e8f0);
+        this.physics.add.existing(floor, true);
+
+        const startX = width / 2 - 275;
+        initialCupsData.forEach((data, idx) => {
+          const x = startX + idx * 110;
+          const y = height - 60;
+
+          const container = this.add.container(x, y);
+          const graphic = drawRealisticCup(this, data.color, cupW, cupH);
+          const text = this.add.text(0, 0, data.type, { font: "bold 11px sans-serif", fill: "#1e293b" }).setOrigin(0.5);
+          
+          container.add([graphic, text]);
+          container.setSize(cupW, cupH);
+          container.type = data.type;
+
+          this.physics.world.enable(container);
+          container.body.setCollideWorldBounds(true);
+          container.body.setBounce(0.1, 0.1);
+          container.body.setFriction(0.9, 0.9);
+
+          this.physics.add.collider(container, table);
+          this.physics.add.collider(container, floor);
+
+          container.setInteractive({ draggable: true });
+          this.cups.push(container);
+        });
+
+        for (let i = 0; i < this.cups.length; i++) {
+          for (let j = i + 1; j < this.cups.length; j++) {
+            this.physics.add.collider(this.cups[i], this.cups[j]);
+          }
+        }
+
+        this.input.on('dragstart', (pointer, gameObject) => {
+          gameObject.body.setAllowGravity(false);
+          gameObject.body.setVelocity(0, 0);
+          gameObject.setDepth(30);
+        });
+
+        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+          gameObject.x = dragX;
+          gameObject.y = dragY;
+        });
+
+        this.input.on('dragend', (pointer, gameObject) => {
+          gameObject.body.setAllowGravity(true);
+          gameObject.setDepth(20);
+
+          let snapped = false;
+          this.slots.forEach(slot => {
+            const targetY = slot.y - (cupH / 2);
+            const dist = Phaser.Math.Distance.Between(gameObject.x, gameObject.y, slot.x, targetY);
+            if (dist < 30) {
+              gameObject.x = slot.x;
+              gameObject.y = targetY;
+              gameObject.body.setVelocity(0, 0);
+              this.tweens.add({
+                targets: gameObject,
+                angle: 180,
+                duration: 400,
+                ease: 'Power2'
+              });
+            }
+          });
+
+          this.time.delayedCall(400, () => this.checkPyramid());
+        });
+
+        this.add.text(width / 2, 80, "Level 4: Pyramid! Top: 1 White | Mid: 2 Saffron | Base: 3 Lime (No spaces!)", {
+          font: "bold 20px sans-serif",
+          fill: "#78350f"
+        }).setOrigin(0.5);
+      }
+
+      checkPyramid() {
+        const cupH = 64;
+        let isCorrect = true;
+
+        this.slots.forEach(slot => {
+          const targetY = slot.y - (cupH / 2);
+          const found = this.cups.find(c => 
+            Math.abs(c.x - slot.x) < 15 && 
+            Math.abs(c.y - targetY) < 15 && 
+            c.type === slot.expected
+          );
+          if (!found) isCorrect = false;
+        });
+
+        if (isCorrect) {
+          this.add.text(this.scale.width / 2, 130, "PYRAMID COMPLETED!", { font: "bold 32px sans-serif", fill: "#d97706" }).setOrigin(0.5);
+          this.time.delayedCall(1200, () => this.onComplete());
+        }
+      }
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
